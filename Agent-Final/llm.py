@@ -262,7 +262,7 @@ def ctc_score_agent(state: CombinedStateDict) -> CombinedStateDict:
 
 Write a Python script to:
 1. Load the CSV file with transcriptions
-2. For Krieger audio file and its corresponding transcription, calculate the CTC score using the force_alignment_and_ctc_score function from utility_functions
+2. For each audio file and its corresponding transcription, calculate the CTC score using the force_alignment_and_ctc_score function from utility_functions
 3. Store the CTC score for each audio-transcript pair in a new column called 'CTC_Score'
 4. Add a 'CTC_Status' column with "Good" if score > 0.7, "Medium" if score > 0.5, "Poor" otherwise
 5. Save the updated CSV with the new columns to the same directory as ctc_scores.csv
@@ -333,20 +333,10 @@ def build_graph_from_structure(structure: list[list[int]]):
 
     return graph_builder.compile()
 
-custom_structure = [
-    [9],
-    [1, 8],
-    [10],
-    [3],
-    [4, 5, 6],
-    [2, 7]
-]
+structure = resp_2
+print("Using structure:", structure)
 
-structure_to_use = custom_structure
-
-print("Using structure:", structure_to_use)
-
-main_graph = build_graph_from_structure(structure_to_use)
+main_graph = build_graph_from_structure(structure)
 main_graph.get_graph().print_ascii()
 
 initial_state = {"folder_path": folder_path}
