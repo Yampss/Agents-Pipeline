@@ -28,7 +28,6 @@ prompt_1 = f"""You are given the following functions:
 8. Silence calculation (using VAD)
 9. Sample rate check
 10. CTC score calculation
-11. Transcript quality check
 
 Based on the prompt, reply with task numbers that have to be done without any explanation or reasoning.
 Example: 1,3,5
@@ -49,7 +48,6 @@ prompt_2 = f"""You are given the following functions:
 8. Silence calculation (using VAD) audio files
 9. Sample rate check using audio files
 10. CTC score calculation using audio files and ground truth file
-11. Transcript quality check using ground truth file
 
 We have to do tasks: {resp_1}.
 Make a Topological sorting for what is the best way to proceed with these tasks, sequentially and concurrently.
@@ -183,7 +181,6 @@ class CombinedStateDict(TypedDict, total=False):
     audio_length_output: str
     folder_path: str
     ctc_score_output: str
-    transcript_quality_output: str
     language_identification_output: str
 
 def transcription_func(state: CombinedStateDict) -> CombinedStateDict:
