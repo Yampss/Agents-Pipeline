@@ -1,5 +1,5 @@
 Steps to use:
-
+dont forgt to use CUDA_VISIBLE_DEVIVCES to attach to single GPU
 Open 3 terminals in container or server and run commands:
 
 terminal 1 :
