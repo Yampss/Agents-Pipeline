@@ -32,7 +32,7 @@ logging.basicConfig(filename="pipeline.log", level=logging.INFO, format="%(ascti
 # Initialize LLM with updated ChatOpenAI
 llm = ChatOpenAI(
     model_name="gpt-4o-mini",
-    openai_api_key="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"
+    openai_api_key="sk-proj-J0eiEMCmbATmMs3jRYQtcZcgCgFYuLxGx4A"
 )
 
 
