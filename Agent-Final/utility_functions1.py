@@ -26,78 +26,16 @@ import torch.nn as nn
 import torch.nn.functional as F
 from torch.utils.data import Dataset, DataLoader
 from ai4bharat.transliteration import XlitEngine
-
-# def language_identification_indiclid(folder_path: str) -> str:
-#     try:
-#         csv_path = os.path.join(folder_path, "indicconf_hypothesis.csv")
-#         if not os.path.exists(csv_path):
-#             raise FileNotFoundError("indicconf_hypothesis.csv not found")
-        
-#         df = pd.read_csv(csv_path)
-#         if 'Filename' not in df.columns or 'Indiconformer_Hypothesis' not in df.columns:
-#             raise ValueError("CSV must contain 'Filename' and 'Indiconformer_Hypothesis' columns")
-        
-#         transcriptions = df['Indiconformer_Hypothesis'].fillna("").tolist()
-#         indiclid_model = IndicLID(input_threshold=0.5, roman_lid_threshold=0.6)
-#         results = indiclid_model.batch_predict(transcriptions, batch_size=1)
-        
-#         output_data = []
-#         for idx, (transcription, lang_code, confidence, model_used) in enumerate(results):
-#             output_data.append({
-#                 "Filename": df.iloc[idx]['Filename'],
-#                 "Transcription": transcription,
-#                 "Detected_Language": lang_code,
-#                 "Confidence": confidence,
-#                 "Model_Used": model_used
-#             })
-        
-#         output_df = pd.DataFrame(output_data)
-#         output_path = os.path.join(folder_path, "indiclid_language_identification.csv")
-#         output_df.to_csv(output_path, index=False)
-#         return f"CSV saved at: {output_path}"
-    
-#     except Exception as e:
-#         print(f"Error in language_identification_indiclid: {e}")
-#         output_path = os.path.join(folder_path, "indiclid_language_identification.csv")
-#         pd.DataFrame([{
-#             "Filename": "N/A",
-#             "Transcription": f"Error: {e}",
-#             "Detected_Language": "",
-#             "Confidence": 0.0,
-#             "Model_Used": ""
-#         }]).to_csv(output_path, index=False)
-#         return f"Error: {e}"
 from typing import List, Tuple
 import logging
-# from indiclid import IndicLID
 
 def language_identification_indiclid(transcription: str) -> List[Tuple[str, str, float, str]]:
-    """
-    Perform language identification on a single transcription using IndicLID.
-    
-    Args:
-        transcription (str): The input transcription text.
-    
-    Returns:
-        List[Tuple[str, str, float, str]]: A list of tuples, each containing:
-            - text (str): The input transcription.
-            - lang_code (str): The detected language code (e.g., 'hi').
-            - confidence (float): Confidence score (0.0 to 1.0).
-            - model (str): Name of the model (e.g., 'IndicLID').
-    """
     logging.info(f"Processing transcription for IndicLID: {transcription[:50]}...")
     try:
         if not transcription or transcription.strip() == "":
             return [(transcription, "Unknown", 0.0, "IndicLID")]
-        
-        # Initialize IndicLID model
         indiclid_model = IndicLID(input_threshold=0.5, roman_lid_threshold=0.6)
-        
-        # Process single transcription
-        # Assuming IndicLID.batch_predict accepts a list and returns a list of tuples
         results = indiclid_model.batch_predict([transcription], batch_size=1)
-        
-        # Validate and format results
         if not results or not isinstance(results, list):
             raise ValueError(f"Invalid result format from IndicLID: {results}")
         
@@ -134,22 +72,20 @@ def transliterate_file(file_path: str, lang_code: str) -> str:
         if "ground_truth" not in df.columns:
             raise ValueError("Column 'ground_truth' not found in the CSV file")
 
-        engine = XlitEngine(beam_width=10, src_script_type="roman")  # Changed from "indic" to "roman"
+        engine = XlitEngine(beam_width=10, src_script_type="roman") 
 
         def transliterate(text):
             if pd.isna(text) or str(text).strip() == "":
                 return ""
             try:
                 result = engine.translit_sentence(str(text), lang_code)
-                # The result might be a string directly or a dict with language codes as keys
                 if isinstance(result, dict) and lang_code in result:
                     return result[lang_code]
                 else:
                     return result
             except Exception as e:
                 print(f"Error transliterating '{text}': {e}")
-                return text  # fallback to original text on error
-
+                return text  
         df["ground_truth_transliterated"] = df["ground_truth"].apply(transliterate)
 
         base, ext = os.path.splitext(file_path)
@@ -275,7 +211,6 @@ def save_num_speakers(folder_path: str, model_token="hf_PsPJDkKAyVdoUsvKqsxbyFsi
             writer.writerow(["File Name", "Number of Speakers", "Speaker Durations"])
             
             for filename in sorted(os.listdir(folder_path)):
-                # Skip the output CSV file itself
                 if filename == "num_speakers.csv":
                     continue
                 
