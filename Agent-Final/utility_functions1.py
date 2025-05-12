@@ -611,15 +611,6 @@ class IndicLID():
         return results
 
 def get_required_inputs(task_id: int) -> list[str]:
-    """
-    Returns the required input fields for a given task ID.
-    
-    Args:
-        task_id (int): The ID of the task (1 to 21) as defined in the pipeline.
-    
-    Returns:
-        list[str]: List of required input fields (e.g., ['audio_dir'], ['ground_truth_csv'], ['audio_dir', 'ground_truth_csv']).
-    """
     input_requirements = {
         1: ["audio_dir"],  
         2: ["audio_dir"],  
