@@ -172,7 +172,6 @@ def select_tasks(user_prompt: str) -> str:
     Prompt: {user_prompt}
     """
     resp_1 = llm.invoke(prompt_1).content
-    # Clean resp_1 to extract task numbers
     task_numbers = re.findall(r'\b\d+\b', resp_1)
     expected_tasks = set()
     if 'Vocab' in user_prompt:
@@ -412,72 +411,6 @@ Write a Python script to:
         return {"audio_length_output": f"Error: {e}"}
 
 
-# def language_verification_agent(state: CombinedStateDict) -> CombinedStateDict:
-#     csv_path = state.get('ground_truth_csv')
-#     expected_lang = state.get('lang_code')  
-#     if not csv_path or not os.path.isfile(csv_path):
-#         logging.error(f"Invalid ground truth CSV for language verification: {csv_path}")
-#         return {"language_verification_output": f"Error: CSV file {csv_path} not found"}
-#     if not expected_lang:
-#         logging.error("No expected language provided for verification")
-#         return {"language_verification_output": "Error: No expected language provided"}
-#     logging.info(f"Running language verification for expected language: {expected_lang} with CSV: {csv_path}")
-#     task_prompt = f"""You are given a CSV file at this path: {csv_path}.
-# It has a column called 'Transcription' (case-insensitive).
-# The expected language is '{expected_lang}' (e.g., 'hi' for Hindi).
-
-# Use the `python_repl` tool to execute a Python script that:
-# 1. Loads the CSV using pandas.
-# 2. For each row's transcription, identifies the language using the `langdetect` library.
-# 3. Adds a 'Detected_Language' column with the identified language code (e.g., 'hi', 'en').
-# 4. Adds a 'Language_Match' column (True if the detected language matches '{expected_lang}', False otherwise).
-# 5. Saves the updated CSV as 'language_verification.csv' in the same directory as the input CSV.
-# 6. Handles errors gracefully (e.g., empty transcriptions, missing columns, file access issues).
-# 7. Prints "Success" if the CSV is saved successfully, otherwise prints an error message with the specific exception.
-
-# Here is the script to execute in `python_repl`:
-# """
-# import pandas as pd
-# import os
-# import logging
-# from langdetect import detect, LangDetectException
-
-
-# logging.basicConfig(filename='pipeline.log', level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
-
-# csv_path = r'{csv_path}'
-# output_path = os.path.join(os.path.dirname(csv_path), "language_verification.csv")
-# expected_lang = '{expected_lang}'
-
-# try:
-#     logging.info(f"Attempting to read CSV: {{csv_path}}")
-#     df = pd.read_csv(csv_path)
-#     transcription_col = next((col for col in df.columns if col.lower() == 'transcription'), None)
-#     if not transcription_col:
-#         raise ValueError("No 'Transcription' column found in CSV")
-#     logging.info(f"Found transcription column: {{transcription_col}}")
-    
-#     def detect_language(text):
-#         if pd.isna(text) or str(text).strip() == "":
-#             logging.warning(f"Empty or null transcription encountered")
-#             return None
-#         try:
-#             lang = detect(str(text))
-#             logging.info(f"Detected language for text '{{text[:50]}}...': {{lang}}")
-#             return lang
-#         except LangDetectException as e:
-#             logging.warning(f"LangDetectException for text '{{text[:50]}}...': {{e}}")
-#             return None
-    
-#     df['Detected_Language'] = df[transcription_col].apply(detect_language)
-#     df['Language_Match'] = df['Detected_Language'] == expected_lang
-#     logging.info(f"Saving output CSV to: {{output_path}}")
-#     df.to_csv(output_path, index=False)
-#     print("Success")
-# except Exception as e:
-#     error_msg = f"Error in language verification: {str(e)}"
-#     logging.error(error_msg)
-#     print(error_msg)
 def language_verification_agent(state: CombinedStateDict) -> CombinedStateDict:
     csv_path = state.get('ground_truth_csv')
     if not csv_path or not os.path.isfile(csv_path):
@@ -539,41 +472,32 @@ def ctc_score_agent(state: CombinedStateDict) -> CombinedStateDict:
     logging.info("Running CTC score calculation")
     try:
         output_path = os.path.join(os.path.dirname(csv_path), "ctc_scores.csv")
-        # Call the batch processor directly
+      
         results = process_audio_directory(audio_dir, csv_path, output_path)
         if results:
-            # Convert results to DataFrame
+          
             df = pd.DataFrame(results)
             if df.empty:
                 logging.error("No valid results generated from process_audio_directory")
                 return {"ctc_score_output": "Error: No valid results generated"}
-            
-            # Group by filename to create the required CSV format
             grouped = df.groupby('filename').agg({
-                'label': lambda x: ' '.join(x),  # Aligned_Transcript
-                'average_ctc_score': 'first',    # CTC_Score
+                'label': lambda x: ' '.join(x), 
+                'average_ctc_score': 'first', 
             }).reset_index()
-            
-            # Add Aligned_Segments as a list of dictionaries
+
             grouped['Aligned_Segments'] = grouped['filename'].apply(
                 lambda x: json.dumps([
                     {'label': row['label'], 'start': row['start_time'], 'end': row['end_time'], 'score': row['score']}
                     for _, row in df[df['filename'] == x].iterrows()
                 ])
             )
-            
-            # Rename columns
+   
             grouped.columns = ['Filename', 'Aligned_Transcript', 'CTC_Score', 'Aligned_Segments']
-            
-            # Add CTC_Status based on CTC_Score
             grouped['CTC_Status'] = grouped['CTC_Score'].apply(
                 lambda x: "Good" if float(x) > 0.7 else "Medium" if float(x) > 0.5 else "Poor"
             )
-            
-            # Reorder columns
             grouped = grouped[['Filename', 'Aligned_Segments', 'Aligned_Transcript', 'CTC_Score', 'CTC_Status']]
-            
-            # Save to CSV
+
             grouped.to_csv(output_path, index=False)
             logging.info(f"CTC scores saved to: {output_path}")
             return {"ctc_score_output": f"CSV saved at: {output_path}"}
@@ -722,248 +646,6 @@ Respond with "Success" if the script completes and the CSV is saved, otherwise "
         logging.error(f"Transcript matching failed: {e}")
         return {"audio_transcript_matching_output": f"Error: {e}"}
 
-# def language_identification_indiclid_agent(state: CombinedStateDict) -> CombinedStateDict:
-#     audio_dir = state.get('audio_dir')
-#     if not audio_dir or not os.path.isdir(audio_dir):
-#         logging.error(f"Invalid audio directory for IndicLID: {audio_dir}")
-#         return {"language_identification_indiclid_output": "Error: Invalid audio directory"}
-#     logging.info("Running language identification with IndicLID")
-#     task_prompt = f"""You are given a folder at this path: {audio_dir} containing a CSV file named 'indicconf_hypothesis.csv'. 
-# The CSV has columns 'Filename' and 'Indiconformer_Hypothesis', where 'Indiconformer_Hypothesis' contains ASR transcriptions.
-
-# Write a Python script to:
-# 1. Load the 'indicconf_hypothesis.csv' file.
-# 2. Use the language_identification_indiclid function from utility_functions to perform language identification.
-# 3. Create a CSV with columns 'Filename', 'Transcription', 'Detected_Language', 'Confidence', and 'Model_Used'.
-# 4. Save the CSV as 'indiclid_language_identification.csv' in the same directory.
-# 5. Handle errors gracefully.
-
-# Respond with "Success" if the script completes and the CSV is saved, otherwise "Invalid".
-# """
-#     try:
-#         response = agent.invoke(task_prompt)
-#         output_path = os.path.join(audio_dir, "indiclid_language_identification.csv")
-#         if response.get("output", "").strip() == "Success" and os.path.exists(output_path):
-#             return {"language_identification_indiclid_output": f"CSV saved at: {output_path}"}
-#         else:
-#             logging.error(f"IndicLID failed to generate {output_path}")
-#             return {"language_identification_indiclid_output": f"Error: Failed to generate {output_path}"}
-#     except Exception as e:
-#         logging.error(f"IndicLID failed: {e}")
-#         return {"language_identification_indiclid_output": f"Error: {e}"}
-
-
-# def language_identification_indiclid_agent(state: CombinedStateDict) -> CombinedStateDict:
-#     audio_dir = state.get('audio_dir')
-#     if not audio_dir or not os.path.isdir(audio_dir):
-#         logging.error(f"Invalid audio directory for IndicLID: {audio_dir}")
-#         return {"language_identification_indiclid_output": "Error: Invalid audio directory"}
-#     logging.info("Running language identification with IndicLID")
-#     try:
-#         input_csv = os.path.join(audio_dir, "indicconf_hypothesis.csv")
-#         if not os.path.isfile(input_csv):
-#             logging.error(f"Indicconf hypothesis CSV not found: {input_csv}")
-#             return {"language_identification_indiclid_output": f"Error: CSV file {input_csv} not found"}
-        
-#         output_path = os.path.join(audio_dir, "indiclid_language_identification.csv")
-#         df = pd.read_csv(input_csv)
-#         if 'Filename' not in df.columns or 'Indiconformer_Hypothesis' not in df.columns:
-#             logging.error(f"Invalid columns in {input_csv}. Expected 'Filename' and 'Indiconformer_Hypothesis'")
-#             return {"language_identification_indiclid_output": f"Error: Invalid columns in CSV"}
-        
-#         results = []
-#         for _, row in df.iterrows():
-#             filename = row['Filename']
-#             transcription = str(row['Indiconformer_Hypothesis'])
-#             if pd.isna(transcription) or transcription.strip() == "":
-#                 logging.warning(f"Empty transcription for {filename}")
-#                 results.append({
-#                     "Filename": filename,
-#                     "Transcription": transcription,
-#                     "Detected_Language": "Unknown",
-#                     "Confidence": 0.0,
-#                     "Model_Used": "IndicLID"
-#                 })
-#                 continue
-            
-#             try:
-#                 lid_result = language_identification_indiclid(transcription)
-#                 results.append({
-#                     "Filename": filename,
-#                     "Transcription": transcription,
-#                     "Detected_Language": lid_result.get("detected_language", "Unknown"),
-#                     "Confidence": lid_result.get("confidence", 0.0),
-#                     "Model_Used": lid_result.get("model_used", "IndicLID")
-#                 })
-#             except Exception as e:
-#                 logging.warning(f"IndicLID failed for {filename}: {e}")
-#                 results.append({
-#                     "Filename": filename,
-#                     "Transcription": transcription,
-#                     "Detected_Language": "Error",
-#                     "Confidence": 0.0,
-#                     "Model_Used": "IndicLID"
-#                 })
-
-#         if results:
-#             output_df = pd.DataFrame(results, columns=["Filename", "Transcription", "Detected_Language", "Confidence", "Model_Used"])
-#             output_df.to_csv(output_path, index=False)
-#             logging.info(f"IndicLID results saved to: {output_path}")
-#             return {"language_identification_indiclid_output": f"CSV saved at: {output_path}"}
-#         else:
-#             logging.error(f"No results generated for IndicLID")
-#             return {"language_identification_indiclid_output": f"Error: No results generated"}
-#     except Exception as e:
-#         logging.error(f"IndicLID failed: {e}")
-#         return {"language_identification_indiclid_output": f"Error: {e}"}
-
-# def language_identification_indiclid_agent(state: CombinedStateDict) -> CombinedStateDict:
-#     audio_dir = state.get('audio_dir')
-#     if not audio_dir or not os.path.isdir(audio_dir):
-#         logging.error(f"Invalid audio directory for IndicLID: {audio_dir}")
-#         return {"language_identification_indiclid_output": "Error: Invalid audio directory"}
-#     logging.info("Running language identification with IndicLID")
-#     try:
-#         input_csv="/raid/ganesh/pdadiga/chriss/test_data/indicconf_hypothesis.csv"
-#         # input_csv = os.path.join(audio_dir, "indicconf_hypothesis.csv")
-#         if not os.path.isfile(input_csv):
-#             logging.error(f"Indicconf hypothesis CSV not found: {input_csv}. Ensure task 1 (ASR transcription) is run first.")
-#             return {"language_identification_indiclid_output": f"Error: CSV file {input_csv} not found"}
-        
-#         output_path="/raid/ganesh/pdadiga/chriss/test_data/indiclid_language_identification.csv"
-#         # output_path = os.path.join(audio_dir, "indiclid_language_identification.csv")
-#         df = pd.read_csv(input_csv)
-#         df.columns = df.columns.str.lower()
-#         if 'filename' not in df.columns or 'indiconformer_hypothesis' not in df.columns:
-#             if 'filename' not in df.columns and 'Filename' in df.columns:
-#                 df['filename'] = df['Filename']
-#             if 'indiconformer_hypothesis' not in df.columns and 'Transcription' in df.columns:
-#                 df['indiconformer_hypothesis'] = df['Transcription']
-#             if 'filename' not in df.columns or 'indiconformer_hypothesis' not in df.columns:
-#                 logging.error(f"Invalid columns in {input_csv}. Expected 'Filename' and 'Indiconformer_Hypothesis'")
-#                 return {"language_identification_indiclid_output": f"Error: Invalid columns in CSV"}
-#         df = df.rename(columns={'filename': 'Filename', 'indiconformer_hypothesis': 'Indiconformer_Hypothesis'})
-#         results = []
-#         for _, row in df.iterrows():
-#             filename = row['Filename']
-#             transcription = str(row['Indiconformer_Hypothesis'])
-#             if pd.isna(transcription) or transcription.strip() == "":
-#                 logging.warning(f"Empty transcription for {filename}")
-#                 results.append({
-#                     "Filename": filename,
-#                     "Transcription": transcription,
-#                     "Detected_Language": "Unknown",
-#                     "Confidence": 0.0,
-#                     "Model_Used": "IndicLID"
-#                 })
-#                 continue
-            
-#             logging.info(f"Processing transcription for {filename}: {transcription[:50]}...")
-#             try:
-#                 lid_result = language_identification_indiclid(transcription)
-#                 if not isinstance(lid_result, dict):
-#                     raise ValueError(f"Invalid result format from language_identification_indiclid: {lid_result}")
-#                 results.append({
-#                     "Filename": filename,
-#                     "Transcription": transcription,
-#                     "Detected_Language": lid_result.get("detected_language", "Unknown"),
-#                     "Confidence": float(lid_result.get("confidence", 0.0)),
-#                     "Model_Used": lid_result.get("model_used", "IndicLID")
-#                 })
-#             except Exception as e:
-#                 logging.warning(f"IndicLID failed for {filename}: {e}")
-#                 results.append({
-#                     "Filename": filename,
-#                     "Transcription": transcription,
-#                     "Detected_Language": "Error",
-#                     "Confidence": 0.0,
-#                     "Model_Used": "IndicLID"
-#                 })
-        
-#         if results:
-#             output_df = pd.DataFrame(results, columns=["Filename", "Transcription", "Detected_Language", "Confidence", "Model_Used"])
-#             output_df.to_csv(output_path, index=False)
-#             logging.info(f"IndicLID results saved to: {output_path}")
-#             return {"language_identification_indiclid_output": f"CSV saved at: {output_path}"}
-#         else:
-#             logging.error(f"No valid results generated for IndicLID")
-#             return {"language_identification_indiclid_output": f"Error: No valid results generated"}
-#     except Exception as e:
-#         logging.error(f"IndicLID processing failed: {e}")
-#         return {"language_identification_indiclid_output": f"Error: {e}"}
-
-# def language_identification_indiclid_agent(state: CombinedStateDict) -> CombinedStateDict:
-#     import os
-#     import logging
-#     import pandas as pd
-
-#     audio_dir = state.get('audio_dir')
-#     if not audio_dir or not os.path.isdir(audio_dir):
-#         logging.error(f"Invalid audio directory for IndicLID: {audio_dir}")
-#         return {"language_identification_indiclid_output": "Error: Invalid audio directory"}
-
-#     logging.info("Running language identification with IndicLID")
-
-#     try:
-#         input_csv = "/raid/ganesh/pdadiga/chriss/test_data/indicconf_hypothesis.csv"
-#         output_path = "/raid/ganesh/pdadiga/chriss/test_data/indiclid_language_identification.csv"
-
-#         if not os.path.isfile(input_csv):
-#             logging.error(f"CSV file not found: {input_csv}")
-#             return {"language_identification_indiclid_output": f"Error: CSV file {input_csv} not found"}
-
-#         df = pd.read_csv(input_csv)
-#         df.columns = df.columns.str.lower()
-
-#         # Handle different column casing
-#         if 'filename' not in df.columns or 'indiconformer_hypothesis' not in df.columns:
-#             if 'filename' not in df.columns and 'Filename' in df.columns:
-#                 df['filename'] = df['Filename']
-#             if 'indiconformer_hypothesis' not in df.columns and 'Transcription' in df.columns:
-#                 df['indiconformer_hypothesis'] = df['Transcription']
-#             if 'filename' not in df.columns or 'indiconformer_hypothesis' not in df.columns:
-#                 logging.error("Expected columns 'Filename' and 'Indiconformer_Hypothesis' not found.")
-#                 return {"language_identification_indiclid_output": "Error: Invalid columns in CSV"}
-
-#         df = df.rename(columns={'filename': 'Filename', 'indiconformer_hypothesis': 'Indiconformer_Hypothesis'})
-
-#         results = []
-
-#         for _, row in df.iterrows():
-#             filename = row['Filename']
-#             transcription = str(row['Indiconformer_Hypothesis'])
-
-#             if pd.isna(transcription) or transcription.strip() == "":
-#                 logging.warning(f"Empty transcription for {filename}")
-#                 results.append((filename, transcription, "Unknown", 0.0, "IndicLID"))
-#                 continue
-
-#             try:
-#                 # Expected output: list of tuples (text, lang_code, confidence, model)
-#                 lid_outputs = language_identification_indiclid(transcription)
-
-#                 if not isinstance(lid_outputs, list):
-#                     raise ValueError(f"Invalid result format from language_identification_indiclid: {lid_outputs}")
-
-#                 for text, lang_code, confidence, model in lid_outputs:
-#                     results.append((filename, text, lang_code, confidence, model))
-
-#             except Exception as e:
-#                 logging.warning(f"IndicLID failed for {filename}: {e}")
-#                 results.append((filename, transcription, "Error", 0.0, "IndicLID"))
-
-#         if results:
-#             output_df = pd.DataFrame(results, columns=["Filename", "Transcription", "Detected_Language", "Confidence", "Model_Used"])
-#             output_df.to_csv(output_path, index=False)
-#             logging.info(f"IndicLID results saved to: {output_path}")
-#             return {"language_identification_indiclid_output": f"CSV saved at: {output_path}"}
-#         else:
-#             logging.error("No valid results generated for IndicLID")
-#             return {"language_identification_indiclid_output": "Error: No valid results generated"}
-
-#     except Exception as e:
-#         logging.error(f"IndicLID processing failed: {e}")
-#         return {"language_identification_indiclid_output": f"Error: {e}"}
 def language_identification_indiclid_agent(state: CombinedStateDict) -> CombinedStateDict:
     audio_dir = state.get('audio_dir')
     if not audio_dir or not os.path.isdir(audio_dir):
@@ -972,7 +654,6 @@ def language_identification_indiclid_agent(state: CombinedStateDict) -> Combined
     logging.info("Running language identification with IndicLID")
     
     try:
-        # Use task 1 output if available, else fall back to default path
         input_csv = state.get('A', os.path.join(audio_dir, "indicconf_hypothesis.csv"))
         output_path = os.path.join(audio_dir, "indiclid_language_identification.csv")
         
@@ -982,7 +663,6 @@ def language_identification_indiclid_agent(state: CombinedStateDict) -> Combined
         
         df = pd.read_csv(input_csv)
         df.columns = df.columns.str.lower()
-        # Handle column name variations
         if 'filename' not in df.columns or 'indiconformer_hypothesis' not in df.columns:
             if 'filename' not in df.columns and 'Filename' in df.columns:
                 df['filename'] = df['Filename']
@@ -1004,7 +684,6 @@ def language_identification_indiclid_agent(state: CombinedStateDict) -> Combined
             
             logging.info(f"Processing transcription for {filename}: {transcription[:50]}...")
             try:
-                # Expected output: list of tuples (text, lang_code, confidence, model)
                 lid_outputs = language_identification_indiclid(transcription)
                 if not isinstance(lid_outputs, list):
                     raise ValueError(f"Invalid result format from language_identification_indiclid: {lid_outputs}")
@@ -1108,7 +787,6 @@ def transliteration_agent(state: CombinedStateDict) -> CombinedStateDict:
         logging.error(f"Transliteration failed: {e}")
         return {"transliteration_output": f"Error: {e}"}
 
-# Node mapping for tasks
 node_map = {
     1: ("node_transcription", transcription_func, "A"),
     2: ("node_num_speaker", num_speaker_func, "E"),
@@ -1136,13 +814,11 @@ node_map = {
 
 def build_graph_from_structure(structure: list[list[int]], valid_tasks: set) -> StateGraph:
     graph_builder = StateGraph(CombinedStateDict)
-    
-    # Add valid task nodes
+
     added_nodes = set()
     valid_structure = [[task for task in group if str(task) in valid_tasks] for group in structure]
-    valid_structure = [group for group in valid_structure if group]  # Remove empty groups
-    
-    # Fallback: if structure is empty but valid_tasks exist, use tasks from valid_tasks
+    valid_structure = [group for group in valid_structure if group]
+
     if not valid_structure and valid_tasks:
         valid_structure = [[int(task) for task in valid_tasks if task.isdigit()]]
     
@@ -1152,11 +828,7 @@ def build_graph_from_structure(structure: list[list[int]], valid_tasks: set) -> 
                 node_name, func, _ = node_map[task_id]
                 graph_builder.add_node(node_name, func)
                 added_nodes.add(task_id)
-    
-    # Add start node
     graph_builder.add_node("start", lambda state: state)
-    
-    # Add edges based on topological order
     for i in range(len(valid_structure)):
         current_group = valid_structure[i]
         if i == 0:
@@ -1174,25 +846,19 @@ def build_graph_from_structure(structure: list[list[int]], valid_tasks: set) -> 
             for task_id in current_group:
                 node_name, _, _ = node_map[task_id]
                 graph_builder.add_edge(node_name, END)
-    
-    # Set entry point if valid tasks exist
     if valid_structure:
         graph_builder.set_entry_point("start")
     else:
         raise ValueError("No valid tasks provided in structure")
     
     return graph_builder.compile()
-
-# Main execution
+    
 def main(user_prompt: str):
-    # Parse prompt
     parsed_inputs = parse_prompt(user_prompt)
     if not parsed_inputs["audio_dir"] and not parsed_inputs["ground_truth_csv"]:
         logging.error("No valid audio directory or ground truth CSV provided in prompt")
         print("Error: Please provide audio directory and/or ground truth CSV in the prompt")
         return
-
-    # Select tasks and build main graph
     resp_1 = select_tasks(user_prompt)
     valid_tasks = set(resp_1.split(',')) if resp_1 else set()
     structure = topological_sort_tasks(resp_1)
@@ -1200,8 +866,6 @@ def main(user_prompt: str):
 
     main_graph = build_graph_from_structure(structure, valid_tasks)
     main_graph.get_graph().print_ascii()
-
-    # Run main pipeline
     initial_state = {
         "audio_dir": parsed_inputs["audio_dir"],
         "ground_truth_csv": parsed_inputs["ground_truth_csv"],
@@ -1209,8 +873,6 @@ def main(user_prompt: str):
         "user_prompt": user_prompt
     }
     final_result = main_graph.invoke(initial_state)
-
-    # Print results
     print("\nFinal Pipeline Results:")
     for key, value in final_result.items():
         if key not in ["audio_dir", "ground_truth_csv", "lang_code", "user_prompt"]:
