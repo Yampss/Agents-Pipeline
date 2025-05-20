@@ -39,31 +39,24 @@ llm2 = ChatGroq(
     temperature=0.1,            
     max_tokens=4096              
 )
-
-
 def parse_prompt(prompt: str) -> Dict[str, Optional[str]]:
     result = {
         "audio_dir": None,
         "ground_truth_csv": None,
         "lang_code": None
     }
-    
     path_pattern = r"['\"]?(/[^'\"]+/[^'\"]+/)['\"]?"
     csv_pattern = r"['\"]?(/[^'\"]+\.csv)['\"]?"
     lang_pattern = r"\b(bn|gu|hi|kn|ml|mr|pa|sd|si|ta|te|ur)\b"
-    
     audio_dir_match = re.search(path_pattern, prompt)
     if audio_dir_match:
         result["audio_dir"] = audio_dir_match.group(1)
-    
     csv_match = re.search(csv_pattern, prompt)
     if csv_match:
         result["ground_truth_csv"] = csv_match.group(1)
-    
     lang_match = re.search(lang_pattern, prompt, re.IGNORECASE)
     if lang_match:
         result["lang_code"] = lang_match.group(1).lower()
-    
     if not result["audio_dir"] and not result["ground_truth_csv"]:
         llm_prompt = f"""Extract the following from the prompt:
         1. Audio directory path (e.g., /path/to/audio/)
@@ -97,7 +90,6 @@ def parse_prompt(prompt: str) -> Dict[str, Optional[str]]:
     if result["ground_truth_csv"] and not os.path.isfile(result["ground_truth_csv"]):
         logging.error(f"Invalid ground truth CSV: {result['ground_truth_csv']}")
         result["ground_truth_csv"] = None
-    
     return result
 
 class CombinedStateDict(TypedDict, total=False):
@@ -170,7 +162,6 @@ def select_tasks(user_prompt: str) -> str:
     22. Speaker Durations
     23. utterance duplicate checker
     24. WER computation 
-
     Based on the prompt, identify the task numbers that must be executed to fulfill the request.
     - Inlcude task 1 whenever an audio_dir is provided.
     - If the prompt mentions 'Vocab calculation', include task 5.
@@ -196,7 +187,6 @@ def prompt_checker_agent(user_prompt: str, selected_tasks: str) -> str:
     max_iterations = 3
     current_tasks = set(selected_tasks.split(',') if selected_tasks else [])
     iteration = 0
-
     task_definitions = """
     1. ASR Transcription
     2. Number of Speakers calculation and duration per speaker
@@ -222,9 +212,7 @@ def prompt_checker_agent(user_prompt: str, selected_tasks: str) -> str:
     22. Speaker Durations
     23. utterance duplicate checker
     24. WER computation 
-
     """
-
     rules = """
     - If the prompt mentions 'Vocab calculation', include task 5.
     - If the prompt mentions 'Character calculation', include task 4.
@@ -237,36 +225,27 @@ def prompt_checker_agent(user_prompt: str, selected_tasks: str) -> str:
     - if Task 9 or task 23 or task 24 are included , then definitely include task 16. 
     - Only include tasks explicitly relevant to the prompt.
     """
-
     while iteration < max_iterations:
         iteration += 1
         logging.info(f"Prompt Checker Iteration {iteration}: Current tasks: {','.join(current_tasks)}")
-
         checker_prompt = f"""
         You are a prompt analysis expert. Your task is to verify if the tasks selected for a given user prompt are correct and complete.
-
         **User Prompt**: {user_prompt}
-
         **Task Definitions**:
         {task_definitions}
-
         **Selection Rules**:
         {rules}
-
         **Currently Selected Tasks**: {','.join(current_tasks) if current_tasks else 'None'}
-
         **Your Task**:
         1. Analyze the user prompt in detail using natural language and in depth context understanding to identify all tasks that should be executed based on the task definitions and rules.
         2. Compare the expected tasks with the currently selected tasks.
         3. If any tasks are missing or incorrect, list them and explain why they should be included.
         4. If all tasks are correct, return 'Correct' with the task numbers as a comma-separated string.
         5. If tasks are missing, return 'Missing' with the missing task numbers as a comma-separated string.
-
         **Output Format**:
         - Status: Correct or Missing
         - Tasks: <comma-separated task numbers>
         - Explanation: <brief explanation if Missing, otherwise empty>
-
         Example:
         Status: Missing
         Tasks: 1,2
@@ -278,26 +257,15 @@ def prompt_checker_agent(user_prompt: str, selected_tasks: str) -> str:
             status_match = re.search(r'Status:\s*(Correct|Missing)', response)
             tasks_match = re.search(r'Tasks:\s*([\d,]+)', response)
             explanation_match = re.search(r'Explanation:\s*(.*)', response, re.DOTALL)
-
             if not status_match or not tasks_match:
                 logging.error(f"Invalid prompt checker response format: {response}")
                 break
-
             status = status_match.group(1)
             tasks = tasks_match.group(1).replace(' ', '')
             explanation = explanation_match.group(1).strip() if explanation_match else ''
-
             if status == 'Correct':
                 logging.info(f"Prompt Checker: All tasks correct: {tasks}")
                 return tasks
-
-            # if status == 'Missing':
-            #     logging.info(f"Prompt Checker: Missing tasks detected: {tasks}. Explanation: {explanation}")
-            #     current_tasks.update(tasks.split(','))
-            #     new_selected_tasks = select_tasks(user_prompt)
-            #     current_tasks.update(new_selected_tasks.split(',') if new_selected_tasks else [])
-            #     current_tasks = {t for t in current_tasks if t and t.isdigit() and int(t) in range(1, 22)}
-            #     logging.info(f"Updated tasks after iteration {iteration}: {','.join(current_tasks)}")
             if status == 'Missing':
                 logging.info(f"Prompt Checker: Missing tasks detected: {tasks}. Explanation: {explanation}")
                 current_tasks.update(tasks.split(','))
@@ -305,19 +273,13 @@ def prompt_checker_agent(user_prompt: str, selected_tasks: str) -> str:
                 if new_selected_tasks:
                     current_tasks.update(new_selected_tasks.split(','))
                 current_tasks = {t for t in current_tasks if t and t.isdigit() and 1 <= int(t) <= 24}
-
                 logging.info(f"Updated tasks after iteration {iteration}: {','.join(sorted(current_tasks))}")
-
-        
         except Exception as e:
             logging.error(f"Prompt Checker failed: {e}")
             break
-
     final_tasks = ','.join(sorted(current_tasks)) if current_tasks else selected_tasks
     logging.info(f"Prompt Checker: Max iterations reached. Final tasks: {final_tasks}")
     return final_tasks
-
-
 
 def topological_sort_tasks(resp_1: str) -> list[list[int]]:
     prompt_2 = f"""You are given the following functions:
@@ -345,8 +307,6 @@ def topological_sort_tasks(resp_1: str) -> list[list[int]]:
     22. Calculate durations of each speaker.
     23. utterance duplicate checker
     24. WER computation 
-
-
     We have to do tasks: {resp_1}.
     Make a topological sorting to execute these tasks efficiently:
     - Include ONLY the tasks listed in: {resp_1}. Do not include any other tasks.
@@ -381,7 +341,6 @@ def topological_sort_tasks(resp_1: str) -> list[list[int]]:
         tasks = [int(t) for t in resp_1.split(',') if t.strip().isdigit()]
         return [tasks] if tasks else []
 
-
 def corruption_agent(state: CombinedStateDict) -> CombinedStateDict:
     audio_dir = state.get('audio_dir')
     if not audio_dir or not os.path.isdir(audio_dir):
@@ -415,7 +374,6 @@ def extension_agent(state: CombinedStateDict) -> CombinedStateDict:
     task_prompt = f"""You are given a folder with audios at this path: {audio_dir}.
 Write a Python script to do the following and then execute it using [python_repl]:
 - Import the 'os' module and use it to iterate through files in the directory.
-
 Steps:
 1. Check that each file has a valid audio extension (only .wav ).
 2. Create a CSV named 'audio_format_check.csv' in the same directory.
@@ -423,10 +381,8 @@ Steps:
 4. For each file:
    - 'Valid_Extension' should be True if the filename ends with .wav (case insensitive), else False.
 5. Save the CSV.
-
 Finally, respond with "Success" if all files have Status "Pass", otherwise respond with "Invalid".
 """
-
     try:
         response = agent.invoke(task_prompt)
         return {"extension_output": response.get("Pass", "Invalid")}
@@ -446,7 +402,6 @@ Write a Python script to do the following and then execute it using [python_repl
 3. Store "Pass" in Status if sample rate is 16000 Hz, otherwise "Fail"
 4. Save the CSV  in the same directory
 Use libraries like librosa, soundfile, or wave to check the sample rate.
-
 Finally, respond with "Success" if all files have Status "Pass", otherwise respond with "Invalid".
 """
     try:
@@ -705,51 +660,17 @@ Respond with "Success" if the script completes and the CSV is saved, otherwise "
         logging.error(f"Valid speaker check failed: {e}")
         return {"valid_speaker_output": f"Error: {e}"}
 
-# def domain_checker_agent(state: CombinedStateDict) -> CombinedStateDict:
-#     audio_dir = state.get('audio_dir')
-#     if not audio_dir or not os.path.isdir(audio_dir):
-#         logging.error(f"Invalid audio directory for domain checker: {audio_dir}")
-#         return {"domain_checker_output": "Error: Invalid audio directory"}
-#     logging.info("Running domain checker")
-#     task_prompt = f"""You are a hindi language expert. You are given a folder at this path: {audio_dir} containing a CSV file named 'normalized_list.csv'. 
-# The CSV has one of the coloumns as 'normalized_transcripts', where 'normalized_transcripts' contains transcriptions of audio files.
-# you have to:
-# 1. Load each row from 'normalized_transcripts' coloumn.
-# 2. Analyze the content of the each row in column to determine the general domain of the speech dataset.
-# 3. Return the domain as a one- or two-word phrase (e.g., 'News', 'Call Center') and Save the domains of each row in a seperate coloumn called 'domain'.
-# 4. Save the CSV as 'domain_check.csv' in the same directory.
-# 5. Handle errors gracefully.
-# Respond with "Success" if the script completes and the CSV is saved, otherwise "Invalid".
-# """
-#     try:
-#         response = agent.invoke(task_prompt)
-#         output_path = os.path.join(audio_dir, "domain_check.csv")
-#         if response.get("output", "").strip() == "Success" and os.path.exists(output_path):
-#             return {"domain_checker_output": f"CSV saved at: {output_path}"}
-#         else:
-#             logging.error(f"Domain checker failed to generate {output_path}")
-#             return {"domain_checker_output": f"Error: Failed to generate {output_path}"}
-#     except Exception as e:
-#         logging.error(f"Domain checker failed: {e}")
-#         return {"domain_checker_output": f"Error: {e}"}
-
-
-
-
 def domain_checker_agent(state: CombinedStateDict) -> CombinedStateDict:
     audio_dir = state.get('audio_dir')
     if not audio_dir or not os.path.isdir(audio_dir):
         logging.error(f"Invalid audio directory for domain checker: {audio_dir}")
         return {"domain_checker_output": "Error: Invalid audio directory"}
-
     csv_path = os.path.join(audio_dir, "indicconf_hypothesis.csv")
     if not os.path.exists(csv_path):
         logging.error(f"CSV file not found: {csv_path}")
         return {"domain_checker_output": f"Error: CSV file not found at {csv_path}"}
-
     try:
         df = pd.read_csv(csv_path)
-
         if 'Indiconformer_Hypothesis' not in df.columns:
             logging.error("Column 'Indiconformer_Hypothesis' not found in CSV.")
             return {"domain_checker_output": "Error: 'Indiconformer_Hypothesis' column missing."}
@@ -758,7 +679,6 @@ def domain_checker_agent(state: CombinedStateDict) -> CombinedStateDict:
         for i, transcript in enumerate(df['Indiconformer_Hypothesis']):
             prompt = f"""You are a Hindi language expert. Analyze the following normalized Hindi transcript and determine the general domain of the speech dataset. 
 Return the domain as a one word phrase (e.g., 'News', 'Call Center', 'Interview', 'Conversation', 'Education').
-
 Transcript:
 {transcript}
 """
@@ -780,7 +700,6 @@ Transcript:
     except Exception as e:
         logging.error(f"Domain checker failed: {e}")
         return {"domain_checker_output": f"Error: {e}"}
-
 
 def audio_transcript_matching_agent(state: CombinedStateDict) -> CombinedStateDict:
     audio_dir = state.get('audio_dir')
@@ -824,26 +743,22 @@ def language_identification_indiclid_agent(state: CombinedStateDict) -> Combined
         logging.error("Invalid or missing audio directory")
         state['indic_lid_output'] = "Error: Invalid audio directory"
         return state
-    
     output_path = os.path.join(audio_dir, "indiclid_language_identification.csv")
     if os.path.exists(output_path):
         logging.info(f"Skipping language identification: File already exists at {output_path}")
         state['indic_lid_output'] = f"File already exists: {output_path}"
         return state
-    
     csv_path = state.get('A', os.path.join(audio_dir, "indicconf_hypothesis.csv"))
     if not os.path.exists(csv_path):
         logging.error(f"Transcription CSV not found at {csv_path}")
         state['indic_lid_output'] = f"Error: Transcription CSV not found at {csv_path}"
         return state
-    
     try:
         df = pd.read_csv(csv_path)
         if 'Indiconformer_Hypothesis' not in df.columns:
             logging.error("Missing 'Indiconformer_Hypothesis' column in CSV")
             state['indic_lid_output'] = "Error: Missing 'Indiconformer_Hypothesis' column"
             return state
-        
         results = []
         for idx, row in df.iterrows():
             transcription = str(row['Indiconformer_Hypothesis'])
@@ -858,7 +773,6 @@ def language_identification_indiclid_agent(state: CombinedStateDict) -> Combined
                     "Model_Used": "IndicLID"
                 })
                 continue
-            
             try:
                 lid_results = language_identification_indiclid(transcription)
                 for _, lang_code, confidence, model_used in lid_results:
@@ -878,12 +792,10 @@ def language_identification_indiclid_agent(state: CombinedStateDict) -> Combined
                     "Confidence": 0.0,
                     "Model_Used": "IndicLID"
                 })
-        
         if not results:
             logging.error("No language identification results generated")
             state['indic_lid_output'] = "Error: No language identification results"
             return state
-        
         output_df = pd.DataFrame(results)
         output_df.to_csv(output_path, index=False)
         logging.info(f"Language identification results saved to {output_path}")
@@ -894,20 +806,12 @@ def language_identification_indiclid_agent(state: CombinedStateDict) -> Combined
     
     return state
 
-
-
-
-
-
-
-
 def normalization_remove_tags_agent(state: CombinedStateDict) -> CombinedStateDict:
     audio_dir = state.get('audio_dir')
     csv_path =  os.path.join(audio_dir, "indicconf_hypothesis-gt.csv")
     output_path = os.path.join(audio_dir, "normalized_list.csv")
     if os.path.exists(output_path):
         return {"normalization_remove_tags_output": f"CSV already exists at: {output_path}"}
-
     if not csv_path or not os.path.isfile(csv_path):
         logging.error(f"Invalid ground truth CSV for character calculation: {csv_path}")
         return {"normalization_remove_tags_output": f"Error: CSV file {csv_path} not found"}
@@ -1016,14 +920,11 @@ def speaker_duration_agent(state: CombinedStateDict) -> CombinedStateDict:
                 for speaker, duration in durations.items():
                     speaker_durations[speaker] = speaker_durations.get(speaker, 0.0) + duration
             except Exception:
-                # Skip rows with invalid or malformed speaker durations
                 continue
-        
         if not speaker_durations:
             logging.error("No speaker durations found")
             state['speaker_duration_output'] = "Error: No speaker durations found"
             return state
-        
         results = [
             {'Speaker': speaker, 'Total_Duration_Hours': round(duration, 6)}
             for speaker, duration in sorted(speaker_durations.items())
@@ -1039,11 +940,6 @@ def speaker_duration_agent(state: CombinedStateDict) -> CombinedStateDict:
     
     return state
 
-
-import os
-import logging
-import pandas as pd
-
 def english_word_count_agent(state: CombinedStateDict) -> CombinedStateDict:
     audio_dir = state.get('audio_dir')
     if not audio_dir or not os.path.isdir(audio_dir):
@@ -1054,21 +950,16 @@ def english_word_count_agent(state: CombinedStateDict) -> CombinedStateDict:
     if not os.path.exists(csv_path):
         logging.error(f"CSV file not found: {csv_path}")
         return {"english_word_count_output": f"Error: CSV file not found at {csv_path}"}
-
     try:
         df = pd.read_csv(csv_path)
-
         if 'ground_truth' not in df.columns:
             logging.error("Column 'ground_truth' not found in CSV.")
             return {"english_word_count_output": "Error: 'ground_truth' column missing."}
-
         word_counts = []
         for i, text in enumerate(df['ground_truth']):
             prompt = f"""You are a language expert. Count and return only the number of **English words** (case-insensitive) in the following text.
-
 Text:
 {text}
-
 Respond with just the number."""
             try:
                 response = llm.invoke(prompt)
@@ -1090,25 +981,18 @@ Respond with just the number."""
         logging.error(f"English word count agent failed: {e}")
         return {"english_word_count_output": f"Error: {e}"}
 
-
-
-
-
 def utterance_duplicate_checker_agent(state: CombinedStateDict) -> CombinedStateDict:
     audio_dir = state.get('audio_dir')
     if not audio_dir or not os.path.isdir(audio_dir):
         logging.error(f"Invalid audio directory for duplicate checker: {audio_dir}")
         return {"utterance_duplicate_output": "Error: Invalid audio directory"}
-
     csv_path = os.path.join(audio_dir, "normalized_list.csv")
     if not os.path.exists(csv_path):
         logging.error(f"CSV file not found: {csv_path}")
         return {"utterance_duplicate_output": f"Error: CSV file not found at {csv_path}"}
-
     try:
         df = pd.read_csv(csv_path)
         rows = []
-
         for column in df.columns:
             if df[column].dtype == 'object':
                 duplicates = df[column][df[column].duplicated(keep=False)]
@@ -1120,7 +1004,6 @@ def utterance_duplicate_checker_agent(state: CombinedStateDict) -> CombinedState
                             "utterance": utterance,
                             "count": count
                         })
-
         if rows:
             dup_df = pd.DataFrame(rows)
             output_path = os.path.join(audio_dir, "duplicate_utterances.csv")
@@ -1129,11 +1012,9 @@ def utterance_duplicate_checker_agent(state: CombinedStateDict) -> CombinedState
             return {"utterance_duplicate_output": f"CSV saved at: {output_path}"}
         else:
             return {"utterance_duplicate_output": "No duplicate utterances found."}
-
     except Exception as e:
         logging.error(f"Duplicate utterance checker failed: {e}")
         return {"utterance_duplicate_output": f"Error: {e}"}
-
 
 import jiwer
 def wer_computation_agent(state: CombinedStateDict) -> CombinedStateDict:
@@ -1141,27 +1022,17 @@ def wer_computation_agent(state: CombinedStateDict) -> CombinedStateDict:
     if not audio_dir or not os.path.isdir(audio_dir):
         logging.error(f"Invalid audio directory for WER computation: {audio_dir}")
         return {"wer_output": "Error: Invalid audio directory"}
-
     try:
-        # Paths to both CSVs
         ref_csv_path = os.path.join(audio_dir, "normalized_list.csv")
         hyp_csv_path = os.path.join(audio_dir, "indicconf_hypothesis.csv")
-        
         if not os.path.exists(ref_csv_path) or not os.path.exists(hyp_csv_path):
             return {"wer_output": "Error: One or both CSV files not found"}
-
-        # Load CSVs
         ref_df = pd.read_csv(ref_csv_path)
         hyp_df = pd.read_csv(hyp_csv_path)
-
         if len(ref_df) != len(hyp_df):
             return {"wer_output": "Error: CSVs do not have the same number of rows"}
-
-        # Extract relevant columns
         references = ref_df["normalized_transcripts"].astype(str)
         hypotheses = hyp_df["Indiconformer_Hypothesis"].astype(str)
-
-        # Compute WER row-by-row
         wer_rows = []
         for ref, hyp in zip(references, hypotheses):
             try:
@@ -1178,20 +1049,14 @@ def wer_computation_agent(state: CombinedStateDict) -> CombinedStateDict:
                     "WER": "Error"
                 })
                 logging.warning(f"WER computation failed for row: {e}")
-
-        # Save to wer.csv
         wer_df = pd.DataFrame(wer_rows)
         output_path = os.path.join(audio_dir, "wer.csv")
         wer_df.to_csv(output_path, index=False)
-        
         logging.info(f"WER computation completed. CSV saved to {output_path}")
         return {"wer_output": f"WER CSV saved at: {output_path}"}
-
     except Exception as e:
         logging.error(f"WER computation failed: {e}")
         return {"wer_output": f"Error: {e}"}
-
-
 node_map = {
     1: ("node_transcription", transcription_func, "A"),
     2: ("node_num_speaker", num_speaker_func, "E"),
@@ -1224,17 +1089,14 @@ def build_graph_from_structure(structure: list[list[int]], valid_tasks: set) -> 
     added_nodes = set()
     valid_structure = [[task for task in group if str(task) in valid_tasks] for group in structure]
     valid_structure = [group for group in valid_structure if group]
-    
     if not valid_structure and valid_tasks:
         valid_structure = [[int(task) for task in valid_tasks if task.isdigit()]]
-    
     for group in valid_structure:
         for task_id in group:
             if task_id in node_map and task_id not in added_nodes:
                 node_name, func, _ = node_map[task_id]
                 graph_builder.add_node(node_name, func)
                 added_nodes.add(task_id)
-    
     graph_builder.add_node("start", lambda state: state)
     for i in range(len(valid_structure)):
         current_group = valid_structure[i]
@@ -1253,14 +1115,11 @@ def build_graph_from_structure(structure: list[list[int]], valid_tasks: set) -> 
             for task_id in current_group:
                 node_name, _, _ = node_map[task_id]
                 graph_builder.add_edge(node_name, END)
-    
     if valid_structure:
         graph_builder.set_entry_point("start")
     else:
         raise ValueError("No valid tasks provided in structure")
-    
     return graph_builder.compile()
-
 def main(user_prompt: str):
     parsed_inputs = parse_prompt(user_prompt)
     if not parsed_inputs["audio_dir"] and not parsed_inputs["ground_truth_csv"]:
@@ -1291,7 +1150,7 @@ def main(user_prompt: str):
 
 if __name__ == "__main__":
     
-    user_prompt= "verify language as Hindi (' hi '),CTC SCORE,   WER computation , normalization , calculate LLM score , check domain ,english word counter, and chcek for utterance duplicate  in :'/raid/ganesh/pdadiga/chriss/agent/AI_Agent_Final/time-task/QC2/audios/' "
+    # user_prompt= "verify language as Hindi (' hi '),CTC SCORE,   WER computation , normalization , calculate LLM score , check domain ,english word counter, and chcek for utterance duplicate  in :'/raid/ganesh/pdadiga/chriss/agent/AI_Agent_Final/time-task/QC2/audios/' "
     
     # user_prompt= "Perform QC Checks, Sample rate check, VAD silence detection, upsampling, IndicLID language identification, calculate speaker duration, verify if speakers are new or old in :'/raid/ganesh/pdadiga/chriss/agent/AI_Agent_Final/time-task/QC1/audios/' "
     
