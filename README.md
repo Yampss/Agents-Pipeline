@@ -134,7 +134,8 @@ The prompt specifies tasks and the audio directory. For tasks requiring a ground
 
 Expected Output:
 
-The pipeline prints the task structure, an ASCII DAG, and final results:Using structure: [[1], [6, 10, 13, 16, 17], [9, 23, 24]]
+The pipeline prints the task structure, an ASCII DAG, and final results:Using structure: [[1], [6, 10, 13, 16, 17], [9, 23, 24]]  
+
 +-----------+
 |   start   |
 +-----------+
@@ -177,9 +178,11 @@ LLM Efficiency: Uses temperature=0.1 and max_tokens=4096 to balance response qua
 File I/O: CSV operations are optimized using pandas, but large datasets may require sufficient disk space and memory.
 
 
-Please ensure code adheres to PEP 8 standards and includes appropriate logging and error handling.
+Please ensure code adheres to PEP 8 standards and includes appropriate logging and error handling.  
+
 License
-This project is licensed under the MIT License. See the LICENSE file for details.
+This project is licensed under the MIT License. See the LICENSE file for details.  
+
 Contact
 For questions or support, contact the repository maintainer at [chrissattasseril16@gmail.com] or open an issue on the repository.
 
