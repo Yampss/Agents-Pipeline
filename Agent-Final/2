@@ -27,32 +27,15 @@ from utility_functions2 import (
     get_required_inputs
 )
 import pandas as pd
-# from groq import Groq, RateLimitError
 logging.basicConfig(filename="pipeline.log", level=logging.INFO, format="%(asctime)s - %(levelname)s - %(message)s")
-
-
-# llm = ChatOpenAI(
-#     model_name="gpt-4.1-mini",
-#     openai_api_key="mbATmMs3jRYQtcZcgCgFYuLxGx4A"
-# )
-
-
+llm = ChatOpenAI(
+    model_name="gpt-4.1-mini",
+    openai_api_key=""
+)
 from langchain_groq import ChatGroq
-llm  = ChatOpenAI(
-    model_name="gpt-4o-mini",
-    openai_api_key="sk-prGeNcambATmMs3LxGx4A"
-  )
-# llm = ChatGroq(
-#     model="llama-3.3-70b-versatile", 
-#     api_key="gsk_vTr", 
-#     temperature=0.1,            
-#     max_tokens=4096              
-# )
-
-
 llm2 = ChatGroq(
     model="deepseek-r1-distill-llama-70b", 
-    api_key="gsk_vTHbkVTGZYKr", 
+    api_key="", 
     temperature=0.1,            
     max_tokens=4096              
 )
@@ -372,7 +355,6 @@ def topological_sort_tasks(resp_1: str) -> list[list[int]]:
     - Task 9,task 23 and task 24 depend very strictly task 16 , so make sure task 16 is done before doing tasks:9,23,24.
     - Respect dependencies: Tasks(3,4,5,6,10,13,14,15,16) depend on Task 1,  Task 12 depends on task 2; Task 22 depends on task 2,  Task 13 depends on task 1; Task 15 depends on task 1; Task 17 depends on task 1; Task 14 depends on ground truth availability.
     - Use the provided audio directory when needed.
-    - if 16 is included in tasks , alwways run task 1 first , then sequentially do task 16  , and only then should rest of the tasks be done.[follow very strictly]
     Return the sorting as a list of lists, e.g., [[6]] for task 6 alone.
     Ensure the output is a valid Python list of lists, enclosed in square brackets.
     If no valid structure can be formed, return a list containing a single group with the tasks from the input, e.g., [[6]] for input '6'.
@@ -1309,8 +1291,8 @@ def main(user_prompt: str):
 
 if __name__ == "__main__":
     
-    user_prompt= "verify language as Hindi (' hi '), calculate CTC SCORE,  do  WER computation , normalization , calculate LLM score , check domain ,english word counter, and chcek for utterance duplicate  in :'/raid/ganesh/pdadiga/chriss/agent/AI_Agent_Final/time-task/QC2/audios/' "
-    # user_prompt="normalization in : '/raid/ganesh/pdadiga/chriss/agent/AI_Agent_Final/time-task/QC2/audios/' "
+    user_prompt= "verify language as Hindi (' hi '),CTC SCORE,   WER computation , normalization , calculate LLM score , check domain ,english word counter, and chcek for utterance duplicate  in :'/raid/ganesh/pdadiga/chriss/agent/AI_Agent_Final/time-task/QC2/audios/' "
+    
     # user_prompt= "Perform QC Checks, Sample rate check, VAD silence detection, upsampling, IndicLID language identification, calculate speaker duration, verify if speakers are new or old in :'/raid/ganesh/pdadiga/chriss/agent/AI_Agent_Final/time-task/QC1/audios/' "
     
     
