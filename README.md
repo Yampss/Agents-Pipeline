@@ -70,7 +70,7 @@ Coming Soon.....!
 
 ## 🙏 Acknowledgement
 
-This code refers to [Ai4Bharat-models]([https://github.com/metauto-ai/GPTSwarm](https://huggingface.co/ai4bharat)).
+This code refers to [Ai4Bharat-models](https://huggingface.co/ai4bharat).
 
 
 
