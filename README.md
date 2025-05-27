@@ -1,6 +1,6 @@
 # [ACL'25] SPEECH-QC AGENGTS
 
-
+(Components/Screenshot 2025-05-27 193521.png)
 ## Overview
 ###### This repository contains llm.py, a sophisticated Python-based pipeline designed for processing audio datasets and performing transcription analysis tasks. The pipeline leverages large language models (LLMs), agentic workflows, and graph-based task orchestration to execute a variety of audio and text processing tasks, such as transcription, vocabulary extraction, character analysis, language verification, and quality control (QC) checks. It is built to handle diverse inputs, including audio directories and ground truth CSV files, and supports concurrent task execution for efficiency.The pipeline is modular, extensible, and integrates with external libraries like pandas, langchain, and jiwer for data manipulation, LLM interactions, and word error rate (WER) computation. It uses a directed acyclic graph (DAG) to manage task dependencies and execution order, ensuring tasks like WER computation depend on transcription outputs. The system is designed for robustness, with detailed logging and error handling to facilitate debugging and monitoring.
 Key features include:
