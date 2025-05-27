@@ -10,6 +10,10 @@ Flexible Input Handling: Supports audio directories and CSV files with dynamic c
 Comprehensive QC Checks: Includes audio corruption, extension, and sample rate checks, with configurable execution based on input availability.
 Extensive Logging: Logs all operations and errors to pipeline.log for traceability.
 
+
+- 🎉 Updates (2025-05) Speech-QC AGent is submitted for acceptance in ACL-2025
+
+
 ## Technical Architecture
 
 ### Core Components:
