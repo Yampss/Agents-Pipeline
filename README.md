@@ -1,4 +1,4 @@
-# [ACL'25] SPEECH-QC AGENGTS
+# [ACL'25] SPEECH-QC AGENTS
 
 ![img1](Components/img1.png)
 ## Overview
