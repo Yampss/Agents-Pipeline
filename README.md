@@ -63,8 +63,14 @@ pip install -r requirements.txt
 
 ### 🔑 Add API keys in the top section of the llm.py fie.
 
+## 📚 Citation
+Coming Soon.....!
 
 
+
+## 🙏 Acknowledgement
+
+This code refers to [Ai4Bharat-models]([https://github.com/metauto-ai/GPTSwarm](https://huggingface.co/ai4bharat)).
 
 
 
