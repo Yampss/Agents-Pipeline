@@ -16,6 +16,8 @@ Extensive Logging: Logs all operations and errors to pipeline.log for traceabili
 
 ## Technical Architecture
 
+![img2](Components/img2.png)
+
 ### Core Components:
 
 LLM Integration:
