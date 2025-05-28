@@ -69,7 +69,7 @@ Coming Soon.....!
 
 ## 🙏 Acknowledgement
 
-This code refers to [Ai4Bharat-models](https://huggingface.co/ai4bharat).
+few Sections refer to [Ai4Bharat-models](https://huggingface.co/ai4bharat).
 
 
 
