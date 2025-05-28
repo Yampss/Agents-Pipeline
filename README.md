@@ -56,9 +56,8 @@ utility_functions2: Custom functions for transcription, VAD, speaker diarization
 ### 📦 Install packages
 
 ```bash
-conda create -n envqc python=3.10
-conda activate envqc
-pip install -r requirements.txt
+conda kenv create -f kenv.yaml
+conda activate kenv
 ```
 
 ### 🔑 Add API keys in the top section of the llm.py fie.
