@@ -11,10 +11,10 @@ Comprehensive QC Checks: Includes audio corruption, extension, and sample rate c
 Extensive Logging: Logs all operations and errors to pipeline.log for traceability.
 
 
-- 🎉 Updates (2025-05) Speech-QC AGent is submitted for acceptance in ACL-2025
+- 🎉 Updates (2025-05) Speech-QC AGent is submitted for acceptance in EMNLP-2025
 
 
-## Technical Architecture
+## Data Creation Pipeline
 
 ![img2](Components/img2.png)
 
