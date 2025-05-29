@@ -1,0 +1,21 @@
+column_name,utterance,count
+ground_truth,और,8
+ground_truth,हाँ,3
+ground_truth,पेड़।यह बिल्कुल गलत है।,3
+ground_truth,इसमें,2
+ground_truth,आज की डेट में,2
+ground_truth,कूदो एकदम सही बात है,2
+ground_truth,बिल्ली एकदम सही बात है,2
+normalized_transcripts,और,10
+normalized_transcripts,जो,3
+normalized_transcripts,हाँ,3
+normalized_transcripts,पेड़।यह बिल्कुल गलत है।,3
+normalized_transcripts,तो,2
+normalized_transcripts,लेकिन,2
+normalized_transcripts,इसमें,2
+normalized_transcripts,है,2
+normalized_transcripts,नहीं,2
+normalized_transcripts,कुत्ता,2
+normalized_transcripts,आज की डेट में,2
+normalized_transcripts,कूदो एकदम सही बात है,2
+normalized_transcripts,बिल्ली एकदम सही बात है,2

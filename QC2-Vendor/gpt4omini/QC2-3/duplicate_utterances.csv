@@ -1,0 +1,10 @@
+column_name,utterance,count
+ground_truth,एकदम,3
+ground_truth,during,3
+ground_truth,पेड़,2
+ground_truth,यह बिल्कुल गलत है।।है,2
+normalized_transcripts,एकदम,3
+normalized_transcripts,during,3
+normalized_transcripts,और,2
+normalized_transcripts,पेड़,2
+normalized_transcripts,यह बिल्कुल गलत है।।है,2

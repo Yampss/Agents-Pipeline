@@ -1,0 +1,7 @@
+column_name,utterance,count
+ground_truth,यह बिल्कुल,7
+ground_truth,यह बिल्कुल गलत,6
+ground_truth,बांग्लादेश,2
+normalized_transcripts,यह बिल्कुल,7
+normalized_transcripts,यह बिल्कुल गलत,6
+normalized_transcripts,बांग्लादेश,2
