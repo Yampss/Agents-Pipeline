@@ -48,7 +48,7 @@ Tasks are dynamically selected based on the prompt and verified by a prompt chec
 
 
 ### External Utilities:
-utility_functions2: Custom functions for transcription, VAD, speaker diarization, and more (assumed to be in the same directory).
+utility_functions: Custom functions for transcription, VAD, speaker diarization, and more (assumed to be in the same directory).
 
 
 ## 🚀 Quick Start 
