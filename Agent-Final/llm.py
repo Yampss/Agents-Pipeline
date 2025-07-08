@@ -237,24 +237,36 @@ def prompt_checker_agent(user_prompt: str, selected_tasks: str) -> str:
         {rules}
         **Currently Selected Tasks**: {','.join(current_tasks) if current_tasks else 'None'}
         **Your Task**:
-        1. Analyze the user prompt in detail using natural language and in depth context understanding to identify all tasks that should be executed based on the task definitions and rules.
-        2. Compare the expected tasks with the currently selected tasks.
-        3. If any tasks are missing or incorrect, list them and explain why they should be included.
-        4. If all tasks are correct, return 'Correct' with the task numbers as a comma-separated string.
-        5. If tasks are missing, return 'Missing' with the missing task numbers as a comma-separated string.
+        1. Analyze the user prompt in detail using natural language and in depth context understanding to identify all tasks that should be executed based on the task definitions and selection rules.
+        2. Compare the expected tasks ( based on your analysis ) with the currently selected tasks
+        3. Determine if the selected tasks are correct, if any are missing, or if any are extra:
+        - 'Correct': All selected tasks match the expected tasks.
+        - 'Missing': Some expected tasks are not in the selected tasks.
+        - 'Extra': Some selected tasks are not relevant to the prompt.
+        4. Strictly adhere to the the ouput format specified below.Do not deviate from this format even if your explaination is detailed
         **Output Format**:
-        - Status: Correct or Missing
-        - Tasks: <comma-separated task numbers>
-        - Explanation: <brief explanation if Missing, otherwise empty>
-        Example:
+        - Status: Correct or Missing or Extra (any one of these three)
+        - Tasks: <comma-separated task numbers which are either missing or extra>
+        - Explanation: <brief explanation if Missing or Extra, otherwise empty>
+        **Important Notes**:
+        - If there are both missing and extra tasks, prioritize 'Extra' as the Status and list only the extra tasks under 'Tasks'. Mention missing tasks (if any) in the explanation.
+        - Ensure the 'Status' and 'Tasks' fields align with your final conclusion, not intermediate reasoning.
+        - Do not include tasks in 'Tasks' field unless they are missing or extra.
+        **Example Output**:
+        Example1:
         Status: Missing
         Tasks: 1,2
         Explanation: The prompt mentions 'ASR transcription' (task 1) and 'number of speakers' (task 2), but these were not selected.
+
+        Example2:
+        Status: Extra
+        Tasks: 3,4
+        Explanation: The prompt does not mention 'Quality of Transcript' (task 3) or 'Graphene calculation' (task 4), but these were included in the selected tasks.
         """
         try:
-            response = llm2.invoke(checker_prompt).content.strip()
+            response = llm.invoke(checker_prompt).content.strip()
             logging.info(f"Prompt Checker Response: {response}")
-            status_match = re.search(r'Status:\s*(Correct|Missing)', response)
+            status_match = re.search(r'Status:\s*(Correct|Missing|Extra)', response)
             tasks_match = re.search(r'Tasks:\s*([\d,]+)', response)
             explanation_match = re.search(r'Explanation:\s*(.*)', response, re.DOTALL)
             if not status_match or not tasks_match:
@@ -266,14 +278,21 @@ def prompt_checker_agent(user_prompt: str, selected_tasks: str) -> str:
             if status == 'Correct':
                 logging.info(f"Prompt Checker: All tasks correct: {tasks}")
                 return tasks
-            if status == 'Missing':
-                logging.info(f"Prompt Checker: Missing tasks detected: {tasks}. Explanation: {explanation}")
+            if status == 'Missing': ####################3 WITH FEEDBACK
+                logging.info(f"Prompt Checker with feedback: Missing/Extra tasks detected: {tasks}. Explanation: {explanation}")
                 current_tasks.update(tasks.split(','))
-                new_selected_tasks = select_tasks(user_prompt)
+                new_selected_tasks = select_tasks(user_prompt + f"\n\n here is the feedback for missing/extra tasks detected from your previous response: {explanation}\n\n")
                 if new_selected_tasks:
                     current_tasks.update(new_selected_tasks.split(','))
                 current_tasks = {t for t in current_tasks if t and t.isdigit() and 1 <= int(t) <= 24}
                 logging.info(f"Updated tasks after iteration {iteration}: {','.join(sorted(current_tasks))}")
+
+            if status == 'Extra': ###########################3 Additional code for extra tasks
+                logging.info(f"Prompt Checker with feedback: Extra tasks detected: {tasks}. Explanation: {explanation}")
+                current_tasks.difference_update(tasks.split(','))
+                if not current_tasks:
+                    logging.info("No tasks left after removing extra tasks.")
+                    return ''    
         except Exception as e:
             logging.error(f"Prompt Checker failed: {e}")
             break
@@ -372,20 +391,27 @@ def extension_agent(state: CombinedStateDict) -> CombinedStateDict:
         logging.error(f"Invalid audio directory for extension check: {audio_dir}")
         return {"extension_output": "Invalid: No audio directory"}
     task_prompt = f"""You are given a folder with audios at this path: {audio_dir}.
-Write a Python script to do the following and then execute it using [python_repl]:
-- Import the 'os' module and use it to iterate through files in the directory.
-Steps:
-1. Check that each file has a valid audio extension (only .wav ).
-2. Create a CSV named 'audio_format_check.csv' in the same directory.
-3. The CSV should have columns: Filename, Valid_Extension.
-4. For each file:
-   - 'Valid_Extension' should be True if the filename ends with .wav (case insensitive), else False.
-5. Save the CSV.
-Finally, respond with "Success" if all files have Status "Pass", otherwise respond with "Invalid".
-"""
+    Write a Python script to do the following and then execute it using [python_repl]:
+    - Import the 'os' module and use it to iterate through files in the directory.
+
+    Steps:
+    1. Check that each file has a valid audio extension (only .wav ).
+    2. Create a CSV named 'audio_format_check.csv' in the same directory.
+    3. The CSV should have columns: Filename, Valid_Extension.
+    4. For each file:
+    - 'Valid_Extension' should be True if the filename ends with .wav (case insensitive), else False.
+    5. Save the CSV.
+
+    Finally, print "Success" if all files have Valid_Extension=True, otherwise print "Invalid".
+    """
+
     try:
         response = agent.invoke(task_prompt)
-        return {"extension_output": response.get("Pass", "Invalid")}
+        # Check for the expected output string
+        if "Success" in response:
+            return {"extension_output": "Success"}
+        else:
+            return {"extension_output": "Invalid"}
     except Exception as e:
         logging.error(f"Extension check failed: {e}")
         return {"extension_output": f"Error: {e}"}
@@ -402,11 +428,15 @@ Write a Python script to do the following and then execute it using [python_repl
 3. Store "Pass" in Status if sample rate is 16000 Hz, otherwise "Fail"
 4. Save the CSV  in the same directory
 Use libraries like librosa, soundfile, or wave to check the sample rate.
+
 Finally, respond with "Success" if all files have Status "Pass", otherwise respond with "Invalid".
 """
     try:
         response = agent.invoke(task_prompt)
-        return {"sample_rate_output": response.get("Pass", "Invalid")}
+        if "Success" in response:
+            return {"sample_rate_output": "Success"}
+        else:
+            return {"sample_rate_output": "Invalid"}
     except Exception as e:
         logging.error(f"Sample rate check failed: {e}")
         return {"sample_rate_output": f"Error: {e}"}
