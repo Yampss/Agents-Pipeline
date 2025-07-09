@@ -448,7 +448,7 @@ def transcription_func(state: CombinedStateDict) -> CombinedStateDict:
         return {"A": "Error: Invalid audio directory"}
     logging.info("Running Transcription")
     result = transcribe_folder_to_csv(audio_dir, source_language="Hindi")
-    return {"A": result, "audio_dir": audio_dir}
+    return {"A": result} #, "audio_dir": audio_dir
 
 def silence_vad_func(state: CombinedStateDict) -> CombinedStateDict:
     audio_dir = state.get('audio_dir')
@@ -771,28 +771,29 @@ def language_identification_indiclid_agent(state: CombinedStateDict) -> Combined
     audio_dir = state.get('audio_dir')
     if not audio_dir or not os.path.isdir(audio_dir):
         logging.error("Invalid or missing audio directory")
-        state['indic_lid_output'] = "Error: Invalid audio directory"
-        return state
+        return {"language_identification_indiclid_output": "Error: Invalid audio directory"}
+    
     output_path = os.path.join(audio_dir, "indiclid_language_identification.csv")
     if os.path.exists(output_path):
         logging.info(f"Skipping language identification: File already exists at {output_path}")
-        state['indic_lid_output'] = f"File already exists: {output_path}"
-        return state
+        return {"language_identification_indiclid_output": f"File already exists: {output_path}"}
+    
     csv_path = state.get('A', os.path.join(audio_dir, "indicconf_hypothesis.csv"))
     if not os.path.exists(csv_path):
         logging.error(f"Transcription CSV not found at {csv_path}")
-        state['indic_lid_output'] = f"Error: Transcription CSV not found at {csv_path}"
-        return state
+        return {"language_identification_indiclid_output": f"Error: Transcription CSV not found at {csv_path}"}
+    
     try:
         df = pd.read_csv(csv_path)
         if 'Indiconformer_Hypothesis' not in df.columns:
             logging.error("Missing 'Indiconformer_Hypothesis' column in CSV")
-            state['indic_lid_output'] = "Error: Missing 'Indiconformer_Hypothesis' column"
-            return state
+            return {"language_identification_indiclid_output": "Error: Missing 'Indiconformer_Hypothesis' column"}
+        
         results = []
         for idx, row in df.iterrows():
             transcription = str(row['Indiconformer_Hypothesis'])
             filename = row.get('Filename', f"unknown_{idx}")
+            
             if pd.isna(transcription) or transcription.strip() == "":
                 logging.warning(f"Empty transcription for {filename}")
                 results.append({
@@ -803,6 +804,7 @@ def language_identification_indiclid_agent(state: CombinedStateDict) -> Combined
                     "Model_Used": "IndicLID"
                 })
                 continue
+            
             try:
                 lid_results = language_identification_indiclid(transcription)
                 for _, lang_code, confidence, model_used in lid_results:
@@ -822,19 +824,20 @@ def language_identification_indiclid_agent(state: CombinedStateDict) -> Combined
                     "Confidence": 0.0,
                     "Model_Used": "IndicLID"
                 })
+        
         if not results:
             logging.error("No language identification results generated")
-            state['indic_lid_output'] = "Error: No language identification results"
-            return state
+            return {"language_identification_indiclid_output": "Error: No language identification results"}
+        
         output_df = pd.DataFrame(results)
         output_df.to_csv(output_path, index=False)
         logging.info(f"Language identification results saved to {output_path}")
-        state['indic_lid_output'] = output_path
+        return {"language_identification_indiclid_output": output_path}
+        
     except Exception as e:
         logging.error(f"Error processing language identification: {e}")
-        state['indic_lid_output'] = f"Error: {e}"
-    
-    return state
+        return {"language_identification_indiclid_output": f"Error: {e}"}
+
 
 def normalization_remove_tags_agent(state: CombinedStateDict) -> CombinedStateDict:
     audio_dir = state.get('audio_dir')
@@ -925,23 +928,20 @@ def speaker_duration_agent(state: CombinedStateDict) -> CombinedStateDict:
     audio_dir = state.get('audio_dir')
     if not audio_dir or not os.path.isdir(audio_dir):
         logging.error("Invalid or missing audio directory")
-        state['speaker_duration_output'] = "Error: Invalid audio directory"
-        return state
+        return {"speaker_duration_output": "Error: Invalid audio directory"}
     
     csv_path = os.path.join(audio_dir, "num_speakers.csv")
     output_path = os.path.join(audio_dir, "speaker_durations.csv")
     
     if not os.path.exists(csv_path):
         logging.error(f"Speaker CSV not found: {csv_path}")
-        state['speaker_duration_output'] = f"Error: Speaker CSV not found: {csv_path}"
-        return state
+        return {"speaker_duration_output": f"Error: Speaker CSV not found: {csv_path}"}
     
     try:
         df = pd.read_csv(csv_path)
         if not all(col in df.columns for col in ['File Name', 'Number of Speakers', 'Speaker Durations']):
             logging.error("Missing required columns in num_speakers.csv")
-            state['speaker_duration_output'] = "Error: Missing required columns in num_speakers.csv"
-            return state
+            return {"speaker_duration_output": "Error: Missing required columns in num_speakers.csv"}
         
         speaker_durations = {}
         for _, row in df.iterrows():
@@ -951,24 +951,25 @@ def speaker_duration_agent(state: CombinedStateDict) -> CombinedStateDict:
                     speaker_durations[speaker] = speaker_durations.get(speaker, 0.0) + duration
             except Exception:
                 continue
+        
         if not speaker_durations:
             logging.error("No speaker durations found")
-            state['speaker_duration_output'] = "Error: No speaker durations found"
-            return state
+            return {"speaker_duration_output": "Error: No speaker durations found"}
+        
         results = [
             {'Speaker': speaker, 'Total_Duration_Hours': round(duration, 6)}
             for speaker, duration in sorted(speaker_durations.items())
         ]
+        
         output_df = pd.DataFrame(results)
         output_df.to_csv(output_path, index=False)
         logging.info(f"Speaker durations saved to {output_path}")
-        state['speaker_duration_output'] = output_path
+        return {"speaker_duration_output": output_path}
     
     except Exception as e:
         logging.error(f"Error processing speaker durations: {e}")
-        state['speaker_duration_output'] = f"Error: {e}"
-    
-    return state
+        return {"speaker_duration_output": f"Error: {e}"}
+
 
 def english_word_count_agent(state: CombinedStateDict) -> CombinedStateDict:
     audio_dir = state.get('audio_dir')
